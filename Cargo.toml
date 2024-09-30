@@ -8,7 +8,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 anyhow = "1.0.89"
-image = { version = "0.25.2", default-features = false, features = ["rayon"] }
+image = { version = "0.25.2" }
 libwebp-sys = "0.9"
 napi = { version = "3.0.0-alpha.12", default-features = false, features = ["napi4"] }
 napi-derive = "3.0.0-alpha.12"
