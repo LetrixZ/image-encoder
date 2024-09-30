@@ -1,16 +1,15 @@
 [package]
 edition = "2021"
 name = "image-encoder"
-version = "0.0.0"
+version = "0.0.1"
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
 anyhow = "1.0.89"
-image = "0.25.2"
+image = { version = "0.25.2", default-features = false, features = ["rayon"] }
 libwebp-sys = "0.9"
-# Default enable napi4 feature, see https://nodejs.org/api/n-api.html#node-api-version-matrix
 napi = { version = "3.0.0-alpha.12", default-features = false, features = ["napi4"] }
 napi-derive = "3.0.0-alpha.12"
 rayon = "1.10.0"
