@@ -8,9 +8,18 @@ crate-type = ["cdylib"]
 
 [dependencies]
 anyhow = "1.0.89"
-image = { version = "0.25.2" }
+image = { version = "0.25.2", default-features = false, features = [
+  "rayon",
+  "avif",
+  "bmp",
+  "jpeg",
+  "png",
+  "webp",
+] }
 libwebp-sys = "0.9"
-napi = { version = "3.0.0-alpha.12", default-features = false, features = ["napi4"] }
+napi = { version = "3.0.0-alpha.12", default-features = false, features = [
+  "napi4",
+] }
 napi-derive = "3.0.0-alpha.12"
 rayon = "1.10.0"
 thiserror = "1.0.64"
@@ -23,3 +32,5 @@ napi-build = "2.0.1"
 [profile.release]
 lto = true
 strip = "symbols"
+opt-level = 'z'
+codegen-units = 1
