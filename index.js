@@ -310,9 +310,8 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { sum, Format, encodeImage, generateImages } = nativeBinding
+const { Format, encodeImage, generateImages } = nativeBinding
 
-module.exports.sum = sum
 module.exports.Format = Format
 module.exports.encodeImage = encodeImage
 module.exports.generateImages = generateImages

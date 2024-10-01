@@ -1,6 +1,7 @@
 #![deny(clippy::all)]
 
 use image::{imageops::FilterType, DynamicImage, GenericImageView};
+use jpegxl_rs::encode::{EncoderResult, EncoderSpeed};
 use libwebp_sys::WebPImageHint;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
@@ -11,13 +12,9 @@ use std::str::FromStr;
 use zip::ZipArchive;
 
 #[napi]
-pub fn sum(a: i32, b: i32) -> i32 {
-  a + b
-}
-
-#[napi]
 pub enum Format {
   Webp,
+  Jxl,
 }
 
 impl FromStr for Format {
@@ -26,6 +23,7 @@ impl FromStr for Format {
   fn from_str(s: &str) -> Result<Self> {
     match s {
       "webp" => Ok(Self::Webp),
+      "jxl" => Ok(Self::Jxl),
       _ => Err(napi::Error::from_reason(format!("Invalid format {s}"))),
     }
   }
@@ -37,6 +35,7 @@ pub struct EncodeOptions {
   pub format: String,
   pub quality: Option<u8>,
   pub effort: Option<u8>,
+  pub speed: Option<u8>,
   pub lossless: Option<bool>,
 }
 
@@ -65,6 +64,68 @@ struct WebpOptions {
   quality: Option<u8>,
   lossless: Option<bool>,
   effort: Option<u8>,
+}
+
+struct JxlOptions {
+  quality: Option<u8>,
+  speed: Option<u8>,
+  lossless: Option<bool>,
+}
+
+struct JxlEncoderSpeed(EncoderSpeed);
+
+impl Default for JxlEncoderSpeed {
+  fn default() -> Self {
+    Self(EncoderSpeed::Squirrel)
+  }
+}
+
+impl TryFrom<u8> for JxlEncoderSpeed {
+  type Error = String;
+
+  fn try_from(value: u8) -> std::result::Result<Self, Self::Error> {
+    match value {
+      1 => Ok(Self(EncoderSpeed::Lightning)),
+      2 => Ok(Self(EncoderSpeed::Thunder)),
+      3 => Ok(Self(EncoderSpeed::Falcon)),
+      4 => Ok(Self(EncoderSpeed::Cheetah)),
+      5 => Ok(Self(EncoderSpeed::Hare)),
+      6 => Ok(Self(EncoderSpeed::Wombat)),
+      7 => Ok(Self(EncoderSpeed::Squirrel)),
+      8 => Ok(Self(EncoderSpeed::Kitten)),
+      9 => Ok(Self(EncoderSpeed::Tortoise)),
+      10 => Ok(Self(EncoderSpeed::Glacier)),
+      _ => Err(format!("Invalid speed: {value}")),
+    }
+  }
+}
+
+fn encode_jxl(img: &DynamicImage, opts: JxlOptions) -> Result<Vec<u8>> {
+  let mut encoder = jpegxl_rs::encoder_builder().build().unwrap();
+
+  if let Some(quality) = opts.quality {
+    encoder.quality = quality as f32
+  }
+
+  if let Some(speed) = opts.speed {
+    encoder.speed = JxlEncoderSpeed::try_from(speed)
+      .map(|v| v.0)
+      .map_err(|err| napi::Error::from_reason(err.to_string()))?;
+  }
+
+  if let Some(lossless) = opts.lossless {
+    encoder.lossless = lossless
+  }
+
+  let image = img
+    .as_rgb8()
+    .ok_or(napi::Error::from_reason("Failed to decode image"))?;
+
+  let encoded: EncoderResult<u8> = encoder
+    .encode(image, img.width(), img.height())
+    .map_err(|err| napi::Error::from_reason(err.to_string()))?;
+
+  Ok(encoded.data)
 }
 
 fn encode_webp(img: &DynamicImage, opts: WebpOptions) -> Result<Vec<u8>> {
@@ -130,6 +191,14 @@ fn encode(image: &[u8], options: &EncodeOptions) -> Result<(Vec<u8>, u32, u32)> 
         quality: options.quality,
         lossless: options.lossless,
         effort: options.effort,
+      },
+    ),
+    Format::Jxl => encode_jxl(
+      &img,
+      JxlOptions {
+        quality: options.quality,
+        speed: options.speed,
+        lossless: options.lossless,
       },
     ),
   }?;
