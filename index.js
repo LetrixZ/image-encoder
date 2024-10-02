@@ -310,8 +310,9 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { Format, encodeImage, generateImages } = nativeBinding
+const { Format, encodeImage, generateImages, generateImagesBatch } = nativeBinding
 
 module.exports.Format = Format
 module.exports.encodeImage = encodeImage
 module.exports.generateImages = generateImages
+module.exports.generateImagesBatch = generateImagesBatch

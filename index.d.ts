@@ -28,3 +28,8 @@ export interface EncodedImage {
 }
 function encodeImage(path: string, image: ArchiveImage): EncodedImage
 function generateImages(path: string, images: Array<ArchiveImage>, threads: number): Array<EncodedImage>
+export interface ImagesBatch {
+  path: string
+  images: Array<ArchiveImage>
+}
+function generateImagesBatch(batches: Array<ImagesBatch>): Array<EncodedImage>

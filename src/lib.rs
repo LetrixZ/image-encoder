@@ -280,3 +280,52 @@ pub fn generate_images(
 
   Ok(encoded)
 }
+
+#[napi(object)]
+pub struct ImagesBatch {
+  pub path: String,
+  pub images: Vec<ArchiveImage>,
+}
+
+#[napi]
+pub fn generate_images_batch(batches: Vec<ImagesBatch>) -> Result<Vec<EncodedImage>> {
+  let mut images_encoding: Vec<ImageEncoding> = vec![];
+
+  for batch in batches {
+    let file_contents = fs::read(batch.path)?;
+    let cursor = Cursor::new(file_contents);
+    let mut zip =
+      ZipArchive::new(cursor).map_err(|err| napi::Error::from_reason(err.to_string()))?;
+
+    for image in batch.images {
+      let mut entry = zip
+        .by_name(&image.filename)
+        .map_err(|err| napi::Error::from_reason(err.to_string()))?;
+
+      let mut contents = vec![];
+
+      entry.read_to_end(&mut contents)?;
+
+      images_encoding.push(ImageEncoding {
+        save_path: image.save_path,
+        options: image.options,
+        contents,
+      });
+    }
+  }
+
+  let encoded = images_encoding
+    .par_iter()
+    .map(|image| {
+      encode(&image.contents, &image.options).map(|(encoded, width, height)| EncodedImage {
+        path: image.save_path.clone(),
+        contents: encoded.into(),
+        width,
+        height,
+      })
+    })
+    .filter_map(|result| result.ok())
+    .collect::<Vec<EncodedImage>>();
+
+  Ok(encoded)
+}
