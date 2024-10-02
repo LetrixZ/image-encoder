@@ -8,30 +8,15 @@ let target: string | undefined = undefined;
 let extension: string | undefined = undefined;
 
 switch (platform) {
-  case "android":
-    extension = "so";
-
-    switch (arch) {
-      case "arm64":
-        target = "aarch64-linux-android";
-        break;
-      case "x64":
-        target = "x86_64-linux-android";
-        break;
-      default:
-        throw new Error(`Unsupported architecture on Android ${arch}`);
-    }
-
-    break;
   case "win32":
     extension = "dll";
 
     switch (arch) {
       case "x64":
-        target = "aarch64-pc-windows-msvc";
+        target = "x86_64-pc-windows-msvc";
         break;
       case "arm64":
-        target = "x86_64-pc-windows-msvc";
+        target = "aarch64-pc-windows-msvc";
         break;
       default:
         throw new Error(`Unsupported architecture on Windows: ${arch}`);
@@ -51,16 +36,6 @@ switch (platform) {
       default:
         throw new Error(`Unsupported architecture on macOS: ${arch}`);
     }
-
-    break;
-  case "freebsd":
-    extension = "so";
-
-    if (arch !== "x64") {
-      throw new Error(`Unsupported architecture on FreeBSD: ${arch}`);
-    }
-
-    target = "x86_64-unknown-freebsd";
 
     break;
   case "linux":
