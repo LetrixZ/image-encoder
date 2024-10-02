@@ -6,6 +6,15 @@ const baseURL = `https://git.letrix.xyz/fermin/image-encoder/releases/download/$
 
 let binary: string | undefined = `${platform}-${arch}.node`;
 
+switch (platform) {
+  case "win32":
+    binary = `${platform}-${arch}-msvc.node`;
+    break;
+  case "linux":
+    binary = `${platform}-${arch}-gnu.node`;
+    break;
+}
+
 const downloadUrl = `${baseURL}/${platform}-${arch}.node`;
 
 console.info(`Downloading binary from: ${downloadUrl}`);
