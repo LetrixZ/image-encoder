@@ -1,5 +1,5 @@
 const { $ } = require("bun");
-const { readFileSync, renameSync } = require("fs");
+const { readFileSync, renameSync, mkdirSync } = require("fs");
 const { join } = require("path");
 const { platform, arch } = process;
 
@@ -111,5 +111,9 @@ const subprocess = Bun.spawn({
 await subprocess.exited;
 
 if (!subprocess.exitCode) {
+  try {
+    mkdirSync("bin");
+  } catch {}
+
   renameSync(join("target", target, "release", `libimage_encoder.${extension}`), join("bin", `${platform}-${arch}.node`));
 }
