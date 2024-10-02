@@ -15,9 +15,6 @@ switch (platform) {
       case "x64":
         target = "x86_64-pc-windows-msvc";
         break;
-      case "arm64":
-        target = "aarch64-pc-windows-msvc";
-        break;
       default:
         throw new Error(`Unsupported architecture on Windows: ${arch}`);
     }
