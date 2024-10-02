@@ -29,9 +29,6 @@ switch (platform) {
       case "arm64":
         target = "aarch64-linux-android";
         break;
-      case "arm":
-        target = "armv7-linux-androideabi";
-        break;
       case "x64":
         target = "x86_64-linux-android";
         break;

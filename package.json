@@ -3,9 +3,6 @@
   "version": "0.0.1",
   "main": "index.js",
   "types": "index.d.ts",
-  "napi": {
-    "name": "image-encoder"
-  },
   "license": "MIT",
   "devDependencies": {
     "@napi-rs/cli": "^2.18.4",
@@ -24,6 +21,7 @@
     "prepublishOnly": "napi prepublish -t npm",
     "test": "ava",
     "universal": "napi universal",
-    "version": "napi version"
+    "version": "napi version",
+    "postinstall": "bun ./install.ts"
   }
 }
