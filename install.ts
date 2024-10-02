@@ -1,12 +1,12 @@
-import { readFileSync, renameSync } from "fs";
+import { readFileSync } from "fs";
+import { version } from "./package.json";
 
 const { platform, arch } = process;
 
-const baseURL = "https://git.letrix.xyz/fermin/image-encoder/releases/download/0.0.1";
+const baseURL = `https://git.letrix.xyz/fermin/image-encoder/releases/download/${version}`;
 
-let target: string | undefined = undefined;
-let extension: string | undefined = undefined;
 let filename: string | undefined = undefined;
+let extra = "";
 
 function isMusl() {
   if (!process.report || typeof process.report.getReport !== "function") {
@@ -60,17 +60,18 @@ switch (platform) {
     break;
   case "linux":
     if (!supportedArchitectures.includes(arch)) {
-      throw new Error(`Unsupported architecture on Android ${arch}`);
+      throw new Error(`Unsupported architecture on Linux ${arch}`);
     }
 
     filename = `linux-${arch}-${isMusl() ? "musl" : "gnu"}.node`;
+    extra = isMusl() ? "-musl" : "-gnu";
 
     break;
   default:
     throw new Error(`Unsupported OS: ${platform}, architecture: ${arch}`);
 }
 
-const downloadUrl = `${baseURL}/${platform}-${arch}.node`;
+const downloadUrl = `${baseURL}/${platform}-${arch}${extra}.node`;
 
 console.info(`Downloading binary from ${downloadUrl}`);
 
