@@ -1,15 +1,15 @@
-import { mkdirSync, renameSync } from "fs";
-import { join } from "path";
+import { mkdir, rename } from "node:fs/promises";
+import { join } from "node:path";
 import { isMusl } from "./utils";
 
 const { platform, arch } = process;
 
 let target: string | undefined = undefined;
-let extension: string | undefined = undefined;
+let output: string | undefined = undefined;
 
 switch (platform) {
   case "win32":
-    extension = "dll";
+    output = "image_encoder.dll";
 
     switch (arch) {
       case "x64":
@@ -24,7 +24,7 @@ switch (platform) {
 
     break;
   case "darwin":
-    extension = "dylib";
+    output = "libimage_encoder.dylib";
 
     switch (arch) {
       case "x64":
@@ -39,7 +39,7 @@ switch (platform) {
 
     break;
   case "linux":
-    extension = "so";
+    output = "libimage_encoder.so";
 
     if (isMusl()) {
       throw new Error("Musl is Unsupported");
@@ -69,8 +69,8 @@ await subprocess.exited;
 
 if (!subprocess.exitCode) {
   try {
-    mkdirSync("bin");
+    await mkdir("bin");
   } catch {}
 
-  renameSync(join("target", target, "release", `libimage_encoder.${extension}`), join("bin", `${platform}-${arch}.node`));
+  rename(join("target", target, "release", output), join("bin", `${platform}-${arch}.node`));
 }
