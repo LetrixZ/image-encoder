@@ -1,25 +1,11 @@
-const { $ } = require("bun");
-const { readFileSync, renameSync, mkdirSync } = require("fs");
-const { join } = require("path");
+import { mkdirSync, renameSync } from "fs";
+import { join } from "path";
+import { isMusl } from "./utils";
+
 const { platform, arch } = process;
 
-function isMusl() {
-  // For Node 10
-  if (!process.report || typeof process.report.getReport !== "function") {
-    try {
-      const lddPath = require("child_process").execSync("which ldd").toString().trim();
-      return readFileSync(lddPath, "utf8").includes("musl");
-    } catch (e) {
-      return true;
-    }
-  } else {
-    const { glibcVersionRuntime } = process.report.getReport().header;
-    return !glibcVersionRuntime;
-  }
-}
-
-let target = undefined;
-let extension = undefined;
+let target: string | undefined = undefined;
+let extension: string | undefined = undefined;
 
 switch (platform) {
   case "android":
@@ -80,20 +66,16 @@ switch (platform) {
   case "linux":
     extension = "so";
 
+    if (isMusl()) {
+      throw new Error("Musl is Unsupported");
+    }
+
     switch (arch) {
       case "x64":
-        if (isMusl()) {
-          target = "x86_64-unknown-linux-musl";
-        } else {
-          target = "x86_64-unknown-linux-gnu";
-        }
+        target = "x86_64-unknown-linux-gnu";
         break;
       case "arm64":
-        if (isMusl()) {
-          target = "aarch64-unknown-linux-musl";
-        } else {
-          target = "aarch64-unknown-linux-gnu";
-        }
+        target = "aarch64-unknown-linux-gnu";
         break;
       default:
         throw new Error(`Unsupported architecture on Linux: ${arch}`);
