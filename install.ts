@@ -2,7 +2,7 @@ import { version } from "./package.json";
 
 const { platform, arch } = process;
 
-const baseURL = `https://git.letrix.xyz/fermin/image-encoder/releases/download/${version}`;
+const baseURL = `https://github.com/LetrixZ/image-encoder/releases/download/${version}`;
 
 let binary: string | undefined = `${platform}-${arch}.node`;
 
