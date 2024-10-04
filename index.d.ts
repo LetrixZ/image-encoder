@@ -5,13 +5,15 @@
 
 export const enum Format {
   Webp = 0,
-  Jxl = 1
+  Jpeg = 1,
+  Png = 2,
+  Jxl = 3,
+  Avif = 4
 }
 export interface EncodeOptions {
   width: number
   format: string
   quality?: number
-  effort?: number
   speed?: number
   lossless?: boolean
 }

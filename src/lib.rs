@@ -43,7 +43,6 @@ pub struct EncodeOptions {
   pub width: u32,
   pub format: String,
   pub quality: Option<u8>,
-  pub effort: Option<u8>,
   pub speed: Option<u8>,
   pub lossless: Option<bool>,
 }
@@ -72,7 +71,7 @@ pub struct EncodedImage {
 struct WebpOptions {
   quality: Option<u8>,
   lossless: Option<bool>,
-  effort: Option<u8>,
+  speed: Option<u8>,
 }
 
 struct JpegOptions {
@@ -123,7 +122,7 @@ fn encode_webp(img: &DynamicImage, opts: WebpOptions) -> Result<Vec<u8>> {
 
   let lossless = if opts.lossless.unwrap_or(false) { 1 } else { 0 };
   let quality = opts.quality.unwrap_or(80) as f32;
-  let method = opts.effort.unwrap_or(4) as i32;
+  let method = opts.speed.unwrap_or(4) as i32;
 
   let encoded = encoder
     .encode_advanced(&webp::WebPConfig {
@@ -242,7 +241,7 @@ fn encode(image: &[u8], options: &EncodeOptions) -> Result<(Vec<u8>, u32, u32)> 
       WebpOptions {
         quality: options.quality,
         lossless: options.lossless,
-        effort: options.effort,
+        speed: options.speed,
       },
     ),
     Format::Jpeg => encode_jpeg(
