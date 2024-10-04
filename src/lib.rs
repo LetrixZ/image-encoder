@@ -1,5 +1,8 @@
 #![deny(clippy::all)]
 
+use image::codecs::avif::AvifEncoder;
+use image::codecs::jpeg::JpegEncoder;
+use image::codecs::png::PngEncoder;
 use image::{imageops::FilterType, DynamicImage, GenericImageView};
 use jpegxl_rs::encode::{EncoderResult, EncoderSpeed};
 use libwebp_sys::WebPImageHint;
@@ -14,7 +17,10 @@ use zip::ZipArchive;
 #[napi]
 pub enum Format {
   Webp,
+  Jpeg,
+  Png,
   Jxl,
+  Avif,
 }
 
 impl FromStr for Format {
@@ -23,7 +29,10 @@ impl FromStr for Format {
   fn from_str(s: &str) -> Result<Self> {
     match s {
       "webp" => Ok(Self::Webp),
+      "jpeg" => Ok(Self::Jpeg),
+      "png" => Ok(Self::Png),
       "jxl" => Ok(Self::Jxl),
+      "avif" => Ok(Self::Avif),
       _ => Err(napi::Error::from_reason(format!("Invalid format {s}"))),
     }
   }
@@ -66,10 +75,19 @@ struct WebpOptions {
   effort: Option<u8>,
 }
 
+struct JpegOptions {
+  quality: Option<u8>,
+}
+
 struct JxlOptions {
   quality: Option<u8>,
   speed: Option<u8>,
   lossless: Option<bool>,
+}
+
+struct AvifOptions {
+  quality: Option<u8>,
+  speed: Option<u8>,
 }
 
 struct JxlEncoderSpeed(EncoderSpeed);
@@ -98,34 +116,6 @@ impl TryFrom<u8> for JxlEncoderSpeed {
       _ => Err(format!("Invalid speed: {value}")),
     }
   }
-}
-
-fn encode_jxl(img: &DynamicImage, opts: JxlOptions) -> Result<Vec<u8>> {
-  let mut encoder = jpegxl_rs::encoder_builder().build().unwrap();
-
-  if let Some(quality) = opts.quality {
-    encoder.quality = quality as f32
-  }
-
-  if let Some(speed) = opts.speed {
-    encoder.speed = JxlEncoderSpeed::try_from(speed)
-      .map(|v| v.0)
-      .map_err(|err| napi::Error::from_reason(err.to_string()))?;
-  }
-
-  if let Some(lossless) = opts.lossless {
-    encoder.lossless = lossless
-  }
-
-  let image = img
-    .as_rgb8()
-    .ok_or(napi::Error::from_reason("Failed to decode image"))?;
-
-  let encoded: EncoderResult<u8> = encoder
-    .encode(image, img.width(), img.height())
-    .map_err(|err| napi::Error::from_reason(err.to_string()))?;
-
-  Ok(encoded.data)
 }
 
 fn encode_webp(img: &DynamicImage, opts: WebpOptions) -> Result<Vec<u8>> {
@@ -173,6 +163,68 @@ fn encode_webp(img: &DynamicImage, opts: WebpOptions) -> Result<Vec<u8>> {
   Ok(encoded)
 }
 
+fn encode_jpeg(img: &DynamicImage, opts: JpegOptions) -> Result<Vec<u8>> {
+  let mut buf = vec![];
+  let encoder = JpegEncoder::new_with_quality(&mut buf, opts.quality.unwrap_or(75));
+  img
+    .write_with_encoder(encoder)
+    .map_err(|err| napi::Error::from_reason(err.to_string()))?;
+
+  Ok(buf)
+}
+
+fn encode_png(img: &DynamicImage) -> Result<Vec<u8>> {
+  let mut buf = vec![];
+  let encoder = PngEncoder::new(&mut buf);
+  img
+    .write_with_encoder(encoder)
+    .map_err(|err| napi::Error::from_reason(err.to_string()))?;
+
+  Ok(buf)
+}
+
+fn encode_jxl(img: &DynamicImage, opts: JxlOptions) -> Result<Vec<u8>> {
+  let mut encoder = jpegxl_rs::encoder_builder().build().unwrap();
+
+  if let Some(quality) = opts.quality {
+    encoder.quality = quality as f32
+  }
+
+  if let Some(speed) = opts.speed {
+    encoder.speed = JxlEncoderSpeed::try_from(speed)
+      .map(|v| v.0)
+      .map_err(|err| napi::Error::from_reason(err.to_string()))?;
+  }
+
+  if let Some(lossless) = opts.lossless {
+    encoder.lossless = lossless
+  }
+
+  let image = img
+    .as_rgb8()
+    .ok_or(napi::Error::from_reason("Failed to decode image"))?;
+
+  let encoded: EncoderResult<u8> = encoder
+    .encode(image, img.width(), img.height())
+    .map_err(|err| napi::Error::from_reason(err.to_string()))?;
+
+  Ok(encoded.data)
+}
+
+fn encode_avif(img: &DynamicImage, opts: AvifOptions) -> Result<Vec<u8>> {
+  let mut buf = vec![];
+  let encoder = AvifEncoder::new_with_speed_quality(
+    &mut buf,
+    opts.speed.unwrap_or(4),
+    opts.quality.unwrap_or(80),
+  );
+  img
+    .write_with_encoder(encoder)
+    .map_err(|err| napi::Error::from_reason(err.to_string()))?;
+
+  Ok(buf)
+}
+
 fn encode(image: &[u8], options: &EncodeOptions) -> Result<(Vec<u8>, u32, u32)> {
   let img = image::ImageReader::new(Cursor::new(image))
     .with_guessed_format()
@@ -193,12 +245,26 @@ fn encode(image: &[u8], options: &EncodeOptions) -> Result<(Vec<u8>, u32, u32)> 
         effort: options.effort,
       },
     ),
+    Format::Jpeg => encode_jpeg(
+      &img,
+      JpegOptions {
+        quality: options.quality,
+      },
+    ),
+    Format::Png => encode_png(&img),
     Format::Jxl => encode_jxl(
       &img,
       JxlOptions {
         quality: options.quality,
         speed: options.speed,
         lossless: options.lossless,
+      },
+    ),
+    Format::Avif => encode_avif(
+      &img,
+      AvifOptions {
+        quality: options.quality,
+        speed: options.speed,
       },
     ),
   }?;
@@ -324,8 +390,7 @@ pub fn generate_images_batch(batches: Vec<ImagesBatch>) -> Result<Vec<EncodedIma
         height,
       })
     })
-    .filter_map(|result| result.ok())
-    .collect::<Vec<EncodedImage>>();
+    .collect::<Result<Vec<EncodedImage>>>()?;
 
   Ok(encoded)
 }
