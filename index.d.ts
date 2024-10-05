@@ -21,15 +21,18 @@ export interface ArchiveImage {
   filename: string
   savePath: string
   options: EncodeOptions
+  page: number
+  archive_id: number
 }
 export interface EncodedImage {
   path: string
   contents: Uint8Array
   width: number
   height: number
+  page: number
+  archive_id: number
 }
 function encodeImage(path: string, image: ArchiveImage): EncodedImage
-function generateImages(path: string, images: Array<ArchiveImage>, threads: number): Array<EncodedImage>
 export interface ImagesBatch {
   path: string
   images: Array<ArchiveImage>

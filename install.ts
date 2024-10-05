@@ -21,8 +21,10 @@ console.info(`Downloading binary from: ${downloadUrl}`);
 
 const res = await fetch(downloadUrl);
 
-if (res.status !== 200) {
-  throw new Error(`Failed to download binary for ${platform} ${arch}`);
+if (res.status === 200) {
+  await Bun.write("index." + binary, res);
+} else if (res.status === 404) {
+  console.warn(`Couldn't find a binary for ${platform} ${arch}`);
+} else {
+  throw new Error(`Failed to download binary for ${platform} ${arch}: ${res.status} - ${res.statusText}`);
 }
-
-await Bun.write("index." + binary, res);

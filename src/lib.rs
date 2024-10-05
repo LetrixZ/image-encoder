@@ -1,5 +1,3 @@
-#![deny(clippy::all)]
-
 use image::codecs::avif::AvifEncoder;
 use image::codecs::jpeg::JpegEncoder;
 use image::codecs::png::PngEncoder;
@@ -52,12 +50,17 @@ pub struct ArchiveImage {
   pub filename: String,
   pub save_path: String,
   pub options: EncodeOptions,
+  pub page: u8,
+  #[napi(js_name = "archive_id")]
+  pub archive_id: u32,
 }
 
 struct ImageEncoding {
   save_path: String,
   options: EncodeOptions,
   contents: Vec<u8>,
+  page: u8,
+  archive_id: u32,
 }
 
 #[napi(object)]
@@ -66,6 +69,9 @@ pub struct EncodedImage {
   pub contents: Uint8Array,
   pub width: u32,
   pub height: u32,
+  pub page: u8,
+  #[napi(js_name = "archive_id")]
+  pub archive_id: u32,
 }
 
 struct WebpOptions {
@@ -118,7 +124,7 @@ impl TryFrom<u8> for JxlEncoderSpeed {
 }
 
 fn encode_webp(img: &DynamicImage, opts: WebpOptions) -> Result<Vec<u8>> {
-  let encoder = webp::Encoder::from_image(&img).map_err(|err| napi::Error::from_reason(err))?;
+  let encoder = webp::Encoder::from_image(img).map_err(napi::Error::from_reason)?;
 
   let lossless = if opts.lossless.unwrap_or(false) { 1 } else { 0 };
   let quality = opts.quality.unwrap_or(80) as f32;
@@ -292,58 +298,9 @@ pub fn encode_image(path: String, image: ArchiveImage) -> Result<EncodedImage> {
     contents: encoded.into(),
     width,
     height,
+    page: image.page,
+    archive_id: image.archive_id,
   })
-}
-
-#[napi]
-pub fn generate_images(
-  path: String,
-  images: Vec<ArchiveImage>,
-  threads: u32,
-) -> Result<Vec<EncodedImage>> {
-  let file_contents = fs::read(path)?;
-  let cursor = Cursor::new(file_contents);
-  let mut zip = ZipArchive::new(cursor).map_err(|err| napi::Error::from_reason(err.to_string()))?;
-
-  let pool = rayon::ThreadPoolBuilder::new()
-    .num_threads(threads as usize)
-    .build()
-    .unwrap();
-
-  let mut images_encoding: Vec<ImageEncoding> = vec![];
-
-  for image in images {
-    let mut entry = zip
-      .by_name(&image.filename)
-      .map_err(|err| napi::Error::from_reason(err.to_string()))?;
-
-    let mut contents = vec![];
-
-    entry.read_to_end(&mut contents)?;
-
-    images_encoding.push(ImageEncoding {
-      save_path: image.save_path,
-      options: image.options,
-      contents,
-    });
-  }
-
-  let encoded = pool.install(|| {
-    images_encoding
-      .par_iter()
-      .map(|image| {
-        encode(&image.contents, &image.options).map(|(encoded, width, height)| EncodedImage {
-          path: image.save_path.clone(),
-          contents: encoded.into(),
-          width,
-          height,
-        })
-      })
-      .filter_map(|result| result.ok())
-      .collect::<Vec<EncodedImage>>()
-  });
-
-  Ok(encoded)
 }
 
 #[napi(object)]
@@ -375,6 +332,8 @@ pub fn generate_images_batch(batches: Vec<ImagesBatch>) -> Result<Vec<EncodedIma
         save_path: image.save_path,
         options: image.options,
         contents,
+        page: image.page,
+        archive_id: image.archive_id,
       });
     }
   }
@@ -387,6 +346,8 @@ pub fn generate_images_batch(batches: Vec<ImagesBatch>) -> Result<Vec<EncodedIma
         contents: encoded.into(),
         width,
         height,
+        page: image.page,
+        archive_id: image.archive_id,
       })
     })
     .collect::<Result<Vec<EncodedImage>>>()?;
